@@ -1,0 +1,60 @@
+version: 0.2
+env:
+  variables:
+    REPONAME: "test"
+    YAMLFILE: "sample.yaml"
+    CLUSTERNAME: "test"
+    ENVISTAGE: "main"
+
+      #secrets-manager:
+      #SONAR_SRV_TOKEN: "arn:aws:secretsmanager:ap-south-1:500440857146:secret:dev/sonar-S2we91:sonartoken"
+
+phases:
+  #install:
+  #runtime-version:
+  #docker: "19"
+  pre_build:
+    commands:
+      # - wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
+      # - unzip ./sonar-scanner-cli-4.8.0.2856-linux.zip
+      # - export PATH=$PATH:/sonar-scanner-4.8.0.2856-linux/bin/
+      # - npm install
+      - echo "Installing kubectl"
+      - curl -O https://s3.us-west-2.amazonaws.com/amazon-eks/1.27.1/2023-04-19/bin/linux/amd64/kubectl
+      - chmod +x ./kubectl
+      - mkdir -p $HOME/bin && cp ./kubectl $HOME/bin/kubectl && export PATH=$PATH:$HOME/bin
+      - echo Logging in to Amazon ECR...
+      - aws --version
+      - aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 295719266680.dkr.ecr.us-east-1.amazonaws.com  
+      - REPOSITORY_URI=295719266680.dkr.ecr.us-east-1.amazonaws.com/$REPONAME
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - TAG=$ENVISTAGE-"$(date +%Y-%m-%d.%H.%M.%S).$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | head -c 8)"
+      - sed -i 's@IMAGE_TAG@'"$TAG"'@' manifest/$YAMLFILE
+  build:
+    commands:
+      # - ./sonar-scanner-4.8.0.2856-linux/bin/sonar-scanner -Dsonar.projectKey=$REPONAME -Dsonar.sources=. -Dsonar.host.url=https://codescan.poonawallafincorp.com/ -Dsonar.login=$SONAR_SRV_TOKEN
+      # - curl -u "$SONAR_SRV_TOKEN:" https://codescan.poonawallafincorp.com/api/qualitygates/project_status?projectKey=$REPONAME >result.json
+      #- cat result.json
+      #   - if [ $(jq -r '.projectStatus.status' result.json) = ERROR ] ; then $CODEBUILD_BUILD_SUCCEEDING -eq 0 ;fi
+      # - echo jest testing
+      # - npm test || true
+      - echo Build started on `date`
+      - echo Building the Docker image...
+      - docker build -t $REPOSITORY_URI:latest .
+      - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$TAG
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - echo Pushing the Docker images....
+      - docker push $REPOSITORY_URI:latest
+      - docker push $REPOSITORY_URI:$TAG
+      - echo Writing image definitions file...
+      - printf '[{"name":$REPONAME,"imageUri":"%s"}]' $REPOSITORY_URI:latest > imagedefinitions.json
+      - cat imagedefinitions.json
+      - echo "Deploying to EKS with Fargate..."
+      - aws eks update-kubeconfig --name $CLUSTERNAME
+      - kubectl get pods -A
+      - kubectl apply -f manifest/$YAMLFILE -n fargate
+artifacts:
+  files: imagedefinitions.json
+

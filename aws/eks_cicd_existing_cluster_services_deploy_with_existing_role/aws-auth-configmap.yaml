@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aws-auth
+  namespace: kube-system
+data:
+  mapRoles: |
+
+    - rolearn: arn:aws:iam::295719266680:role/codebuild-dev-test-cluster-deploy-role
+      username: Aniket_kale
+      groups:
+        - system:masters    
+    - rolearn: arn:aws:iam::295719266680:root
+      username: root
+      groups:
+        - system:masters
+    - groups:
+        - system:bootstrappers
+        - system:nodes
+      rolearn: arn:aws:iam::295719266680:role/new_eks_node
+      username: system:node:{{EC2PrivateDNSName}}
+    - groups:
+        - system:bootstrappers
+        - system:nodes
+        - system:node-proxier
+      rolearn: arn:aws:iam::295719266680:role/farget-pod
+      username: system:node:{{SessionName}}
+
+
+         

@@ -1,0 +1,58 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 16
+    commands:
+      - echo "Installing Node.js dependencies..."
+      - npm install
+      - npm install -g serverless
+
+  build:
+    commands:
+      - echo "Deploying to Lambda"
+      - npm run deploy:uat
+      
+  post_build:
+    commands:
+      - echo "Deployment complete"
+
+artifacts:
+  files: []
+
+# version: 0.2
+
+# phases:
+#   build:
+#     commands:
+#       - echo "This is the build phase... Zipping my Lambda function"
+#       - zip -r deployment_package.zip index.js
+#   post_build:
+#     commands:
+#       - echo "Deploying to Lambda"
+#       - aws s3 cp deployment_package.zip s3://your-bucket-name/deployment_package.zip
+#       - aws lambda update-function-code --function-name hello_world --s3-bucket your-bucket-name --s3-key deployment_package.zip
+# artifacts:
+#   type: zip
+#   files:
+#     - deployment_package.zip
+
+# version: 0.2
+
+# phases:
+#   build:
+#     commands:
+#       - echo "This is the build phase... Zipping my Lambda function"
+#       - TIMESTAMP=$(date +"%Y%m%d%H%M%S")
+#       - ZIPFILE_NAME="deployment_package_${TIMESTAMP}.zip"
+#       - zip -r "${ZIPFILE_NAME}" index.js
+#       - aws s3 cp "${ZIPFILE_NAME}" s3://"${var.lambda-bucket-name}"/"${ZIPFILE_NAME}"
+#   post_build:
+#     commands:
+#       - echo "Deploying to Lambda"
+#       - LATEST_FILE=$(aws s3 ls s3://"${var.lambda-bucket-name}"/ | grep "deployment_package_" | sort -r | head -n 1 | awk '{print $4}')
+#       - sls deploy --package "s3://"${var.lambda-bucket-name}"/${LATEST_FILE}"
+# artifacts:
+#   files:
+#     - deployment_package_*.zip
