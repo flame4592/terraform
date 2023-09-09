@@ -7,7 +7,7 @@ data:
   mapRoles: |
 
     - rolearn: arn:aws:iam::295719266680:role/codebuild-dev-test-cluster-deploy-role
-      username: Aniket_kale
+      username: $userName
       groups:
         - system:masters    
     - rolearn: arn:aws:iam::295719266680:root
